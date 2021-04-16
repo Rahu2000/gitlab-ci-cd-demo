@@ -157,11 +157,12 @@ spec:
       containers:
         - name: result
           image: __CI_REGISTRY_IMAGE__/result:__VERSION__
+          imagePullPolicy: Always
           ports:
           - containerPort: 80
             name: result
       imagePullSecrets:
-        - name: gitlab-registry
+        - name: __REGISTRY_SECRET__
 
 # vote
 ---
@@ -222,11 +223,12 @@ spec:
       containers:
         - name: vote
           image: __CI_REGISTRY_IMAGE__/vote:__VERSION__
+          imagePullPolicy: Always
           ports:
           - containerPort: 80
             name: vote
       imagePullSecrets:
-        - name: gitlab-registry
+        - name: __REGISTRY_SECRET__
 
 # worker
 ---
@@ -265,9 +267,10 @@ spec:
     spec:
       containers:
         - image: __CI_REGISTRY_IMAGE__/worker:__VERSION__
+          imagePullPolicy: Always
           name: worker
       imagePullSecrets:
-        - name: gitlab-registry
+        - name: __REGISTRY_SECRET__
 
 ---
 # Ingress Resource
