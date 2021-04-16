@@ -1,0 +1,308 @@
+# redis
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: redis-__CI_PROJECT_NAME__
+    ref: __CI_ENVIRONMENT_SLUG__
+  name: redis
+spec:
+  clusterIP: None
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+  selector:
+    app: redis-__CI_PROJECT_NAME__
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels:
+    app: redis-__CI_PROJECT_NAME__
+    ref: __CI_ENVIRONMENT_SLUG__
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-__CI_PROJECT_NAME__
+  template:
+    metadata:
+      labels:
+        app: redis-__CI_PROJECT_NAME__
+        ref: __CI_ENVIRONMENT_SLUG__
+      annotations:
+        app.gitlab.com/app: __CI_PROJECT_PATH_SLUG__
+        app.gitlab.com/env: __CI_ENVIRONMENT_SLUG__
+    spec:
+      containers:
+        - name: redis
+          image: redis:alpine
+          ports:
+          - containerPort: 6379
+            name: redis
+
+# db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  labels:
+    app: db-__CI_PROJECT_NAME__
+    ref: __CI_ENVIRONMENT_SLUG__
+spec:
+  clusterIP: None
+  ports:
+  - name: db
+    port: 5432
+    targetPort: 5432
+  selector:
+    app: db-__CI_PROJECT_NAME__
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+  labels:
+    app: db-__CI_PROJECT_NAME__
+    ref: __CI_ENVIRONMENT_SLUG__
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db-__CI_PROJECT_NAME__
+  template:
+    metadata:
+      labels:
+        app: db-__CI_PROJECT_NAME__
+        ref: __CI_ENVIRONMENT_SLUG__
+      annotations:
+        app.gitlab.com/app: __CI_PROJECT_PATH_SLUG__
+        app.gitlab.com/env: __CI_ENVIRONMENT_SLUG__
+    spec:
+      containers:
+        - name: db
+          image: postgres:9.4
+          env:
+          - name: PGDATA
+            value: /var/lib/postgresql/data/pgdata
+          - name: POSTGRES_USER
+            value: postgres
+          - name: POSTGRES_PASSWORD
+            value: postgres
+          ports:
+          - containerPort: 5432
+            name: db
+          volumeMounts:
+          - name: db-data
+            mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: db-data
+          persistentVolumeClaim:
+            claimName: postgres-pv-claim
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pv-claim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+# result
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: result
+  labels:
+    app: result-__CI_PROJECT_NAME__
+    ref: __CI_ENVIRONMENT_SLUG__
+spec:
+  type: NodePort
+  ports:
+  - port: 5001
+    targetPort: 80
+    name: result
+  selector:
+    app: result-__CI_PROJECT_NAME__
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: result
+  labels:
+    app: result-__CI_PROJECT_NAME__
+    ref: __CI_ENVIRONMENT_SLUG__
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: result-__CI_PROJECT_NAME__
+  template:
+    metadata:
+      labels:
+        app: result-__CI_PROJECT_NAME__
+        ref: __CI_ENVIRONMENT_SLUG__
+      annotations:
+        app.gitlab.com/app: __CI_PROJECT_PATH_SLUG__
+        app.gitlab.com/env: __CI_ENVIRONMENT_SLUG__
+    spec:
+      containers:
+        - name: result
+          image: __CI_REGISTRY_IMAGE__/result:__VERSION__
+          ports:
+          - containerPort: 80
+            name: result
+      imagePullSecrets:
+        - name: gitlab-registry
+
+# vote
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vote
+  labels:
+    app: vote-__CI_PROJECT_NAME__
+    ref: __CI_ENVIRONMENT_SLUG__
+spec:
+  type: NodePort
+  ports:
+    - port: 5000
+      targetPort: 80
+      name: vote
+  selector:
+    app: vote-__CI_PROJECT_NAME__
+---
+# Default HTTP BACKEND SERVICE
+apiVersion: v1
+kind: Service
+metadata:
+  name: default-http-backend
+  labels:
+    app: default-http-__CI_PROJECT_NAME__
+    ref: __CI_ENVIRONMENT_SLUG__
+spec:
+  type: NodePort
+  ports:
+    - port: 5000
+      targetPort: 80
+      name: vote
+  selector:
+    app: vote-__CI_PROJECT_NAME__
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vote
+  labels:
+    app: vote-__CI_PROJECT_NAME__
+    ref: __CI_ENVIRONMENT_SLUG__
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: vote-__CI_PROJECT_NAME__
+  template:
+    metadata:
+      labels:
+        app: vote-__CI_PROJECT_NAME__
+        ref: __CI_ENVIRONMENT_SLUG__
+      annotations:
+        app.gitlab.com/app: __CI_PROJECT_PATH_SLUG__
+        app.gitlab.com/env: __CI_ENVIRONMENT_SLUG__
+    spec:
+      containers:
+        - name: vote
+          image: __CI_REGISTRY_IMAGE__/vote:__VERSION__
+          ports:
+          - containerPort: 80
+            name: vote
+      imagePullSecrets:
+        - name: gitlab-registry
+
+# worker
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: worker-__CI_PROJECT_NAME__
+    ref: __CI_ENVIRONMENT_SLUG__
+  name: worker
+spec:
+  clusterIP: None
+  selector:
+    app: worker-__CI_PROJECT_NAME__
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: worker-__CI_PROJECT_NAME__
+    ref: __CI_ENVIRONMENT_SLUG__
+  name: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker-__CI_PROJECT_NAME__
+  template:
+    metadata:
+      labels:
+        app: worker-__CI_PROJECT_NAME__
+        ref: __CI_ENVIRONMENT_SLUG__
+      annotations:
+        app.gitlab.com/app: __CI_PROJECT_PATH_SLUG__
+        app.gitlab.com/env: __CI_ENVIRONMENT_SLUG__
+    spec:
+      containers:
+        - image: __CI_REGISTRY_IMAGE__/worker:__VERSION__
+          name: worker
+      imagePullSecrets:
+        - name: gitlab-registry
+
+---
+# Ingress Resource
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: app-ingress
+  annotations:
+    kubernetes.io/tls-acme: "true"
+    kubernetes.io/ingress.class: "nginx"
+  labels:
+    app: ingress-__CI_PROJECT_NAME__
+    ref: __CI_ENVIRONMENT_SLUG__
+
+spec:
+  tls:
+  - hosts:
+    - __CI_ENVIRONMENT_SLUG__.result.__KUBE_INGRESS_BASE_DOMAIN__
+    - __CI_ENVIRONMENT_SLUG__.__KUBE_INGRESS_BASE_DOMAIN__
+    # the secret used here is an unsigned wildcard cert for demo purposes
+    # use your own or comment this out
+    secretName: tls-some-wildcard-demo
+  rules:
+  - host: __CI_ENVIRONMENT_SLUG__.result.__KUBE_INGRESS_BASE_DOMAIN__
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: result
+          servicePort: 5001
+  - host: __CI_ENVIRONMENT_SLUG__.__KUBE_INGRESS_BASE_DOMAIN__
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: vote
+          servicePort: 5000
+---
